@@ -234,6 +234,13 @@ function completeRun(snapshot) {
     elements['result-copy'].textContent = copy;
     audio.beep(180, 0.3, 0, 'triangle');
   }
+  // 上报全网统计 / 实时排行榜（成功与失败都计数）
+  try {
+    if (window.BrakeNet) {
+      const ok = snapshot.phase === 'success';
+      window.BrakeNet.report(ok, ok ? Math.round(snapshot.elapsed * 1000) : 0);
+    }
+  } catch (e) {}
 }
 
 function render(snapshot) {
@@ -324,25 +331,36 @@ function render(snapshot) {
 function renderRecords() {
   const list = $('records-list');
   list.replaceChildren();
-  if (!scores.length) {
-    const empty = document.createElement('li');
-    empty.className = 'empty-records';
-    const icon = document.createElement('b'); icon.textContent = '—';
-    empty.append(icon, document.createTextNode('你的第一条纪录，还在起跑线上。'));
-    list.append(empty);
-    return;
+  const loading = document.createElement('li');
+  loading.className = 'empty-records';
+  loading.textContent = '正在加载全网排行…';
+  list.append(loading);
+  const done = (board) => {
+    list.replaceChildren();
+    if (!board || !board.length) {
+      const empty = document.createElement('li');
+      empty.className = 'empty-records';
+      const icon = document.createElement('b'); icon.textContent = '—';
+      empty.append(icon, document.createTextNode(board ? '还没有人上榜，来做第一个！' : '加载失败，检查网络后重试。'));
+      list.append(empty);
+      return;
+    }
+    const myDevice = window.BrakeNet ? window.BrakeNet.device() : '';
+    board.forEach((entry, index) => {
+      const row = document.createElement('li'); row.className = 'record-row';
+      const rank = document.createElement('span'); rank.className = 'record-rank'; rank.textContent = String(index + 1).padStart(2, '0');
+      const who = document.createElement('span'); who.className = 'record-date';
+      who.textContent = entry.n + (entry.d && entry.d === myDevice ? '（你）' : '');
+      const time = document.createElement('span'); time.className = 'record-score'; time.textContent = (entry.ms / 1000).toFixed(3);
+      const unit = document.createElement('small'); unit.textContent = 's'; time.append(unit);
+      row.append(rank, who, time); list.append(row);
+    });
+  };
+  if (window.BrakeNet) {
+    window.BrakeNet.getBoard().then(done).catch(() => done(null));
+  } else {
+    done(null);
   }
-  scores.forEach((score, index) => {
-    const row = document.createElement('li'); row.className = 'record-row';
-    const rank = document.createElement('span'); rank.className = 'record-rank'; rank.textContent = String(index + 1).padStart(2, '0');
-    const date = document.createElement('span'); date.className = 'record-date';
-    date.textContent = new Date(score.date).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
-    const details = document.createElement('small'); details.textContent = `反应 ${score.reaction.toFixed(3)} s · ${score.distance.toFixed(1)} m`;
-    date.append(details);
-    const time = document.createElement('span'); time.className = 'record-score'; time.textContent = score.time.toFixed(3);
-    const unit = document.createElement('small'); unit.textContent = 's'; time.append(unit);
-    row.append(rank, date, time); list.append(row);
-  });
 }
 
 function openDialog(id) {

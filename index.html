@@ -26,7 +26,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Zm4 3a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg>
         </button>
         <button class="icon-btn" id="pause" aria-label="暂停游戏" disabled title="暂停 · P"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg></button>
-        <button class="records-btn" id="records-open" aria-label="本地记录"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8v5a4 4 0 0 1-8 0V3Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 1v7m-4 2h8"/></svg><span>本地记录</span><span class="arrow">↗</span></button>
+        <button class="records-btn" id="records-open" aria-label="排行榜"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8v5a4 4 0 0 1-8 0V3Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 1v7m-4 2h8"/></svg><span>排行榜</span><span class="arrow">↗</span></button>
       </nav>
     </header>
 
@@ -37,6 +37,7 @@
       <div class="steps"><span><b>01</b> 等车速到 100</span><span><b>02</b> 按住刹车加力</span><span><b>03</b> 松开，控制力度</span></div>
       <button class="primary-btn" id="start">开始挑战 <span>↗</span></button>
       <p class="intro-note">100 前踩下失败 <span>·</span> 1600 N 踏板断裂</p>
+      <p class="global-stats" id="global-stats">正在加载全网数据…</p>
     </section>
 
     <section class="live-message" id="live-message" hidden aria-live="polite">
@@ -101,7 +102,7 @@
   </main>
 
   <dialog class="records-dialog" id="records-dialog" aria-labelledby="records-title">
-    <div class="dialog-header"><div><p class="eyebrow">YOUR PERSONAL GARAGE</p><h2 id="records-title">最快的你。</h2><p>本地 TOP 50 · 成绩保存在当前浏览器</p></div><button class="icon-btn close-btn" id="records-close" aria-label="关闭本地记录">×</button></div>
+    <div class="dialog-header"><div><p class="eyebrow">GLOBAL LEADERBOARD</p><h2 id="records-title">全网最快。</h2><p>实时排行 · 全网车手最快刹停 TOP 50</p><p class="records-me">你的车手名：<b id="brake-myname">…</b><button class="text-btn" id="brake-rename">改名</button></p></div><button class="icon-btn close-btn" id="records-close" aria-label="关闭排行榜">×</button></div>
     <div class="record-columns"><span>排名</span><span>测试时间</span><span>刹停成绩</span></div>
     <ol id="records-list" class="records-list"></ol>
     <p class="records-footnote">每一次更快，都值得被记住。</p>
@@ -145,6 +146,69 @@
 
   <script type="module" src="./app.mjs"></script>
   <script>
+  /* ---------- 刹车站网络层：全网统计 + 实时排行榜 ---------- */
+  window.BrakeNet = (function(){
+    var API = 'https://deepseekchatkele.pages.dev';
+    function device(){
+      try {
+        var d = localStorage.getItem('redline_device');
+        if (!d) { d = 'd' + Math.random().toString(36).slice(2, 10); localStorage.setItem('redline_device', d); }
+        return d;
+      } catch(e){ return 'anon'; }
+    }
+    function name(){
+      try {
+        var n = localStorage.getItem('redline_name');
+        if (!n) { n = '车手·' + Math.random().toString(36).slice(2, 6).toUpperCase(); localStorage.setItem('redline_name', n); }
+        return n;
+      } catch(e){ return '无名车手'; }
+    }
+    function setName(n){
+      n = String(n || '').trim().slice(0, 12);
+      if (!n) return false;
+      try { localStorage.setItem('redline_name', n); } catch(e){}
+      return true;
+    }
+    async function report(success, ms){
+      try {
+        await fetch(API + '/api/brake/result', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ success: !!success, ms: ms | 0, name: name(), device: device() })
+        });
+      } catch(e){}
+      refreshStats();
+    }
+    async function getStats(){
+      var r = await fetch(API + '/api/brake/stats');
+      return r.json();
+    }
+    async function getBoard(){
+      var r = await fetch(API + '/api/brake/board');
+      var j = await r.json();
+      if (!j.ok) throw new Error('board');
+      return j.board || [];
+    }
+    async function refreshStats(){
+      try {
+        var j = await getStats();
+        var el = document.getElementById('global-stats');
+        if (el && j.ok) el.innerHTML = '🏁 <b>' + (j.success | 0) + '</b> 人成功刹停 · 💥 <b>' + (j.fail | 0) + '</b> 人刹车失败';
+      } catch(e){}
+    }
+    return { report: report, getStats: getStats, getBoard: getBoard, refreshStats: refreshStats, name: name, setName: setName, device: device };
+  })();
+  /* 车手名显示 + 改名 + 首页统计 */
+  (function(){
+    var nm = document.getElementById('brake-myname');
+    if (nm) nm.textContent = window.BrakeNet.name();
+    var rb = document.getElementById('brake-rename');
+    if (rb) rb.onclick = function(){
+      var n = prompt('输入你的车手名（最多12字）', window.BrakeNet.name());
+      if (n && window.BrakeNet.setName(n) && nm) nm.textContent = window.BrakeNet.name();
+    };
+    window.BrakeNet.refreshStats();
+  })();
+
   /* ---------- 站点公告 ---------- */
   (function(){
     var hide = false;
