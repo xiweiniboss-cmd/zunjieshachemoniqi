@@ -2,8 +2,6 @@
 
 参考 [breakbreak.app](https://breakbreak.app/) 的刹停计时玩法制作的独立网页小游戏。
 
-[在线试玩](https://bufan1024.github.io/redline-brake-game/)
-
 ## 运行截图
 
 桌面端：
