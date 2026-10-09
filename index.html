@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101719">
+  <meta name="description" content="刹车大师：等车速达到 100，控制刹车力度，挑战你的最快刹停纪录。">
+  <title>REDLINE · 刹车大师</title>
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="game-shell" id="game" data-phase="idle" tabindex="-1">
+    <canvas id="scene" aria-hidden="true"></canvas>
+    <div class="scene-shade" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="header">
+      <a class="brand" href="./" aria-label="REDLINE 刹车大师首页">
+        <span class="brand-name"><i aria-hidden="true"></i>REDLINE<span class="brand-dot">®</span></span>
+        <span class="brand-caption">极 限 制 动</span>
+      </a>
+      <div class="track-label"><span class="track-dot"></span><div>PROVING GROUND <b>/ 01</b><small>封闭测试道路 · 黄昏</small></div></div>
+      <nav class="header-actions" aria-label="游戏工具">
+        <button class="icon-btn" id="sound" aria-label="关闭声音" aria-pressed="false" title="声音 · M">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Zm4 3a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg>
+        </button>
+        <button class="icon-btn" id="pause" aria-label="暂停游戏" disabled title="暂停 · P"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg></button>
+        <button class="records-btn" id="records-open" aria-label="本地记录"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8v5a4 4 0 0 1-8 0V3Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 1v7m-4 2h8"/></svg><span>本地记录</span><span class="arrow">↗</span></button>
+      </nav>
+    </header>
+
+    <section class="intro overlay" id="intro" aria-labelledby="intro-title">
+      <p class="eyebrow"><span></span> 100 → 0 <i>/</i> 刹停计时挑战</p>
+      <h1 id="intro-title">快到极限，<em>停得漂亮。</em></h1>
+      <p class="intro-copy">从 100 km/h 到静止。你的反应，决定你的成绩。</p>
+      <div class="steps"><span><b>01</b> 等车速到 100</span><span><b>02</b> 按住刹车加力</span><span><b>03</b> 松开，控制力度</span></div>
+      <button class="primary-btn" id="start">开始挑战 <span>↗</span></button>
+      <p class="intro-note">100 前踩下失败 <span>·</span> 1600 N 踏板断裂</p>
+    </section>
+
+    <section class="live-message" id="live-message" hidden aria-live="polite">
+      <p class="eyebrow" id="live-eyebrow">准备发车</p>
+      <div class="live-title" id="live-title">3</div>
+      <p id="live-hint">等待车速达到 100 km/h</p>
+    </section>
+
+    <section class="result overlay" id="result" hidden aria-labelledby="result-title">
+      <p class="eyebrow" id="result-eyebrow">TEST COMPLETE / 测试完成</p>
+      <h2 id="result-title">漂亮，稳稳停住。</h2>
+      <div class="result-time" id="result-time">3.820<span>s</span></div>
+      <p class="result-copy" id="result-copy"></p>
+      <div class="result-actions"><button class="primary-btn" id="retry">再跑一次 <span>↗</span></button><button class="text-btn" id="result-records">查看记录</button></div>
+    </section>
+
+    <section class="dashboard" aria-label="驾驶仪表">
+      <div class="telemetry">
+        <p class="panel-label"><i></i> 本次测试 <span>/ TELEMETRY</span></p>
+        <div class="telemetry-grid">
+          <div class="stat"><span class="stat-label">反应时间</span><p><strong id="reaction">—</strong><small>s</small></p></div>
+          <div class="stat"><span class="stat-label">总用时 <span>· 从 100 起计</span></span><p><strong id="elapsed">0.00</strong><small>s</small></p></div>
+          <div class="stat"><span class="stat-label">制动距离</span><p><strong id="distance">0.0</strong><small>m</small></p></div>
+          <div class="stat best-stat"><span class="stat-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.5 5 5.5.8-4 4 .9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-4 5.5-.8L12 3Z"/></svg>个人最快</span><p><strong id="best">—</strong><small id="best-unit"></small></p></div>
+        </div>
+        <button class="text-btn restart-btn" id="restart" hidden>重新发车 <span>R</span></button>
+      </div>
+
+      <div class="speedometer">
+        <svg class="gauge" viewBox="0 0 420 320" aria-hidden="true">
+          <defs><linearGradient id="arc-gradient"><stop offset="0" stop-color="#80918e" stop-opacity=".32"/><stop offset=".55" stop-color="#c4d7c9" stop-opacity=".6"/><stop offset="1" stop-color="#ff946b"/></linearGradient><filter id="glow"><feGaussianBlur stdDeviation="4"/></filter></defs>
+          <path class="gauge-track" d="M80.1 270 A150 150 0 1 1 339.9 270"/>
+          <path class="gauge-progress" id="gauge-progress" d="M80.1 270 A150 150 0 1 1 339.9 270"/>
+          <g id="gauge-ticks"></g>
+          <circle id="gauge-tip-glow" cx="80.1" cy="270" r="8" fill="#ff986e" filter="url(#glow)"/>
+          <circle id="gauge-tip" cx="80.1" cy="270" r="4" fill="#ff986e"/>
+        </svg>
+        <div class="speed-readout"><span class="speed-number" id="speed">000</span><span class="speed-unit">KM/H</span><span class="speed-status" id="speed-status"><i></i>准备就绪</span></div>
+        <div class="gauge-caption"><span>100 → 0</span> 反应 + 控力 = 极限制动</div>
+      </div>
+
+      <div class="brake-panel">
+        <p class="panel-label"><i></i> 刹车力度 <span>/ BRAKE FORCE</span></p>
+        <div class="force-heading"><div><strong id="force">0</strong><small>N</small></div><span id="force-note">力度越大，刹停越快</span></div>
+        <div class="brake-controls">
+          <div class="force-scale">
+            <div class="force-limit"><span>1600</span> N <b>断裂</b></div>
+            <div class="force-track" role="meter" id="force-meter" aria-label="刹车力度" aria-valuemin="0" aria-valuemax="1600" aria-valuenow="0"><div class="force-fill" id="force-fill"></div><div class="danger-band"></div><span class="force-marker" id="force-marker"></span></div>
+            <div class="force-labels" aria-hidden="true"><span>1200</span><span>800</span><span>400</span><span>0 N</span></div>
+          </div>
+          <div class="pedal-visual" aria-hidden="true"><div class="pedal-arm"></div><div class="pedal-foot"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>踏板行程</span></div>
+          <button id="pedal" class="pedal-btn" aria-label="踩下刹车，按住加力，松开减力" aria-pressed="false" disabled><span class="pedal-mark"></span><strong>踩下刹车</strong><small>按住持续加力</small></button>
+        </div>
+        <p class="brake-tip" id="brake-tip">轻踩 · 抬起 · 再踩</p>
+      </div>
+    </section>
+
+    <footer class="footer"><div><span class="keycap">SPACE</span><span>按住加力，松开减力</span><i></i><span class="keycap">P</span><span>暂停</span></div><button class="text-btn" id="help-open">玩法说明 <span>?</span></button></footer>
+
+    <div class="pause-overlay" id="pause-overlay" hidden><div><p class="eyebrow">TAKE A BREATH</p><h2>休息一秒，<br>再冲极限。</h2><button class="primary-btn" id="resume">继续测试 <span>▶</span></button><button class="text-btn" id="pause-restart">重新发车</button></div></div>
+    <div class="toast" id="toast" role="status" hidden></div>
+  </main>
+
+  <dialog class="records-dialog" id="records-dialog" aria-labelledby="records-title">
+    <div class="dialog-header"><div><p class="eyebrow">YOUR PERSONAL GARAGE</p><h2 id="records-title">最快的你。</h2><p>本地 TOP 50 · 成绩保存在当前浏览器</p></div><button class="icon-btn close-btn" id="records-close" aria-label="关闭本地记录">×</button></div>
+    <div class="record-columns"><span>排名</span><span>测试时间</span><span>刹停成绩</span></div>
+    <ol id="records-list" class="records-list"></ol>
+    <p class="records-footnote">每一次更快，都值得被记住。</p>
+  </dialog>
+
+  <dialog class="help-dialog" id="help-dialog" aria-labelledby="help-title">
+    <div class="dialog-header"><div><p class="eyebrow">DRIVER'S BRIEFING</p><h2 id="help-title">刹车，也是门技术。</h2></div><button class="icon-btn close-btn" id="help-close" aria-label="关闭玩法说明">×</button></div>
+    <div class="help-steps"><p><b>01</b><span><strong>等到 100，再动手。</strong>车辆自动加速。首次达到 100 km/h 开始计时，提前踩刹车会失败。</span></p><p><b>02</b><span><strong>按住加力，松开减力。</strong>按住屏幕踏板或空格键，力度持续增加；松开后力度逐渐回落。交替轻踩和抬起，把力度控制在高位。</span></p><p><b>03</b><span><strong>快，但别踩断。</strong>力度达到 1600 N 时踏板断裂。停到 0 km/h 完成挑战，总用时包含你的反应时间。</span></p></div>
+    <p class="help-keyboard"><span class="keycap">SPACE</span> 刹车 <span class="keycap">R</span> 重试 <span class="keycap">P</span> 暂停 <span class="keycap">M</span> 静音</p>
+    <button class="primary-btn" id="help-done">知道了 <span>↗</span></button>
+  </dialog>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>
