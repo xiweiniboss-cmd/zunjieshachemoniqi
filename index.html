@@ -195,18 +195,44 @@
         if (el && j.ok) el.innerHTML = '🏁 <b>' + (j.success | 0) + '</b> 人成功刹停 · 💥 <b>' + (j.fail | 0) + '</b> 人刹车失败';
       } catch(e){}
     }
-    return { report: report, getStats: getStats, getBoard: getBoard, refreshStats: refreshStats, name: name, setName: setName, device: device };
+    async function checkName(n){
+      var r = await fetch(API + '/api/brake/check-name', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: n })
+      });
+      return r.json();
+    }
+    async function sanitizeName(){
+      try {
+        var r = await checkName(name());
+        if (r && r.ok === false) {
+          var n = '车手·' + Math.random().toString(36).slice(2, 6).toUpperCase();
+          try { localStorage.setItem('redline_name', n); } catch(e){}
+          var nm = document.getElementById('brake-myname');
+          if (nm) nm.textContent = n;
+        }
+      } catch(e){}
+    }
+    return { report: report, getStats: getStats, getBoard: getBoard, refreshStats: refreshStats, name: name, setName: setName, device: device, checkName: checkName, sanitizeName: sanitizeName };
   })();
   /* 车手名显示 + 改名 + 首页统计 */
   (function(){
     var nm = document.getElementById('brake-myname');
     if (nm) nm.textContent = window.BrakeNet.name();
     var rb = document.getElementById('brake-rename');
-    if (rb) rb.onclick = function(){
+    if (rb) rb.onclick = async function(){
       var n = prompt('输入你的车手名（最多12字）', window.BrakeNet.name());
-      if (n && window.BrakeNet.setName(n) && nm) nm.textContent = window.BrakeNet.name();
+      if (n == null) return;
+      n = String(n).trim().slice(0, 12);
+      if (!n) { alert('名字不能为空'); return; }
+      try {
+        var r = await window.BrakeNet.checkName(n);
+        if (!r.ok) { alert(r.error || '名字包含敏感词，换一个吧'); return; }
+        if (window.BrakeNet.setName(n) && nm) nm.textContent = window.BrakeNet.name();
+      } catch(e) { alert('网络错误，请稍后重试'); }
     };
     window.BrakeNet.refreshStats();
+    window.BrakeNet.sanitizeName();
   })();
 
   /* ---------- 站点公告 ---------- */
