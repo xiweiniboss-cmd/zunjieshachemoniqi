@@ -83,7 +83,7 @@ async function load(){
   document.getElementById('st-f').textContent=j.fail;
   var h='';
   (j.runs||[]).forEach(function(x){
-    h+='<div class="run"><span class="t">'+fmtT(x.t)+'</span> · <span class="ip">'+esc(x.ip||'--')+'</span><br>🚗 '+esc(x.n||'无名车手')+' · '+(x.ok?'<span class="ok">成功 '+(x.ms/1000).toFixed(3)+'s</span>':'<span class="no">失败</span>')+'</div>';
+    h+='<div class="run"><span class="t">'+fmtT(x.t)+'</span> · <span class="ip">'+esc(x.ip||'--')+'</span><br>🚗 '+esc(x.n||'无名车手')+' · '+(x.ok?'<span class="ok">成功 '+(x.ms/1000).toFixed(3)+'s</span>':'<span class="no">失败</span>')+' · ⏱反应 '+((x.r||0)/1000).toFixed(3)+'s</div>';
   });
   document.getElementById('runs').innerHTML=h||'<div class="empty">暂无游戏记录</div>';
 }

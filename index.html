@@ -169,11 +169,11 @@
       try { localStorage.setItem('redline_name', n); } catch(e){}
       return true;
     }
-    async function report(success, ms){
+    async function report(success, ms, reactionMs){
       try {
         await fetch(API + '/api/brake/result', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ success: !!success, ms: ms | 0, name: name(), device: device() })
+          body: JSON.stringify({ success: !!success, ms: ms | 0, reaction: reactionMs | 0, name: name(), device: device() })
         });
       } catch(e){}
       refreshStats();

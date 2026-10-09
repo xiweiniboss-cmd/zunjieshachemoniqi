@@ -238,7 +238,7 @@ function completeRun(snapshot) {
   try {
     if (window.BrakeNet) {
       const ok = snapshot.phase === 'success';
-      window.BrakeNet.report(ok, ok ? Math.round(snapshot.elapsed * 1000) : 0);
+      window.BrakeNet.report(ok, ok ? Math.round(snapshot.elapsed * 1000) : 0, Math.round((snapshot.reaction ?? 0) * 1000));
     }
   } catch (e) {}
 }
