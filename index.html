@@ -179,6 +179,7 @@
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body
           });
           if (r.ok) break;
+          if (r.status === 429 || (r.status >= 400 && r.status < 500)) break; // 被服务器明确拒绝就别重试了
         } catch(e){}
         if (attempt < 2) await new Promise(function(res){ setTimeout(res, 1000 * (attempt + 1)); });
       }
