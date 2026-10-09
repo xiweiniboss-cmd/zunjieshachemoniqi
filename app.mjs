@@ -106,6 +106,24 @@ class GameAudio {
   }
 }
 const audio = new GameAudio();
+// meme 音效：成功→遥遥领先，失败→华为质量标准
+const memeAudio = {
+  success: new Audio('./audio/success.mp3'),
+  fail: new Audio('./audio/fail.mp3'),
+};
+memeAudio.success.preload = 'auto';
+memeAudio.fail.preload = 'auto';
+function playMeme(ok) {
+  if (muted) return;
+  try {
+    const a = ok ? memeAudio.success : memeAudio.fail;
+    const b = ok ? memeAudio.fail : memeAudio.success;
+    try { b.pause(); } catch (e2) {}
+    a.currentTime = 0;
+    const pr = a.play();
+    if (pr && pr.catch) pr.catch(() => {});
+  } catch (e) {}
+}
 
 function makeTicks() {
   const ns = 'http://www.w3.org/2000/svg';
@@ -219,9 +237,7 @@ function completeRun(snapshot) {
     seconds.textContent = 's';
     elements['result-time'].append(seconds);
     elements['result-copy'].textContent = `反应 ${record.reaction.toFixed(3)} s · 峰值力度 ${Math.round(snapshot.peakForce)} N · ${saved ? '成绩已记录' : '本次成绩未能保存'}`;
-    audio.beep(523, 0.18);
-    audio.beep(659, 0.18, 0.13);
-    audio.beep(784, 0.3, 0.26);
+    playMeme(true);
   } else {
     const failureMessages = {
       early: ['TOO EARLY / 抢跑了', '太心急了。', '车速还没到 100 km/h。等绿灯亮起，再踩下刹车。'],
@@ -232,7 +248,7 @@ function completeRun(snapshot) {
     elements['result-eyebrow'].textContent = kicker;
     elements['result-title'].textContent = title;
     elements['result-copy'].textContent = copy;
-    audio.beep(180, 0.3, 0, 'triangle');
+    playMeme(false);
   }
   // 上报全网统计 / 实时排行榜（成功与失败都计数）
   try {
