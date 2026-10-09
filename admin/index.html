@@ -31,6 +31,7 @@ h2{font-size:14px;letter-spacing:2px;color:#9aada3;margin:18px 0 10px}
 .run .no{color:#ff8ba0;font-weight:700}
 .run .t{color:#9aada3;font-size:11px}
 .empty{text-align:center;color:#9aada3;font-size:12px;padding:24px}
+.delbtn{background:#3a2028;color:#ff8ba0;border:1px solid #ff8ba055;border-radius:6px;padding:2px 10px;font-size:11px;cursor:pointer;margin-left:6px}
 .back{display:block;text-align:center;margin-top:20px;font-size:12px;color:#9aada3}
 .back a{color:var(--orange)}
 </style>
@@ -83,7 +84,7 @@ async function load(){
   document.getElementById('st-f').textContent=j.fail;
   var h='';
   (j.runs||[]).forEach(function(x){
-    h+='<div class="run"><span class="t">'+fmtT(x.t)+'</span> · <span class="ip">'+esc(x.ip||'--')+'</span><br>🚗 '+esc(x.n||'无名车手')+' · '+(x.ok?'<span class="ok">成功 '+(x.ms/1000).toFixed(3)+'s</span>':'<span class="no">失败</span>')+' · ⏱反应 '+((x.r||0)/1000).toFixed(3)+'s</div>';
+    h+='<div class="run"><span class="t">'+fmtT(x.t)+'</span> · <span class="ip">'+esc(x.ip||'--')+'</span><br>🚗 '+esc(x.n||'无名车手')+' · '+(x.ok?'<span class="ok">成功 '+(x.ms/1000).toFixed(3)+'s</span>':'<span class="no">失败</span>')+' · ⏱反应 '+((x.r||0)/1000).toFixed(3)+'s <button class="delbtn" data-d="'+esc(x.d||'')+'">删</button></div>';
   });
   document.getElementById('runs').innerHTML=h||'<div class="empty">暂无游戏记录</div>';
 }
@@ -102,6 +103,19 @@ async function login(){
 }
 document.getElementById('go').onclick=login;
 document.getElementById('key').addEventListener('keydown',function(e){if(e.key==='Enter')login();});
+document.getElementById('runs').onclick=async function(e){
+  var b=e.target.closest?e.target.closest('.delbtn'):null;
+  if(!b)return;
+  var d=b.getAttribute('data-d');
+  if(!d||!confirm('删除该设备在排行榜和游戏记录中的所有数据？'))return;
+  b.disabled=true;
+  try{
+    var r=await fetch(API+'/api/admin/brake/delete-entry?key='+encodeURIComponent(K),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({device:d})});
+    var j=await r.json();
+    if(j.ok)await load();else alert(j.error||'删除失败');
+  }catch(err){alert('删除失败');}
+  b.disabled=false;
+};
 document.getElementById('refresh').onclick=function(){load().catch(function(e){alert(e.message==='auth'?'密码已失效，请刷新页面重登':'加载失败');});};
 document.getElementById('reset').onclick=async function(){
   if(!confirm('确定要一键清零吗？\n成功/失败计数、排行榜、游戏记录将全部清空，不可恢复！'))return;
