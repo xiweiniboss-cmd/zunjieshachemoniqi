@@ -26,6 +26,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Zm4 3a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg>
         </button>
         <button class="icon-btn" id="pause" aria-label="暂停游戏" disabled title="暂停 · P"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg></button>
+        <button class="icon-btn" id="notice-open" aria-label="查看公告" title="公告"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0v4l2 3H4l2-3V9Zm6 11a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 20Z"/></svg></button>
         <button class="records-btn" id="records-open" aria-label="排行榜"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8v5a4 4 0 0 1-8 0V3Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 1v7m-4 2h8"/></svg><span>排行榜</span><span class="arrow">↗</span></button>
       </nav>
     </header>
@@ -170,12 +171,16 @@
       return true;
     }
     async function report(success, ms, reactionMs){
-      try {
-        await fetch(API + '/api/brake/result', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ success: !!success, ms: ms | 0, reaction: reactionMs | 0, name: name(), device: device() })
-        });
-      } catch(e){}
+      var body = JSON.stringify({ success: !!success, ms: ms | 0, reaction: reactionMs | 0, name: name(), device: device() });
+      for (var attempt = 0; attempt < 3; attempt++) {
+        try {
+          var r = await fetch(API + '/api/brake/result', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body
+          });
+          if (r.ok) break;
+        } catch(e){}
+        if (attempt < 2) await new Promise(function(res){ setTimeout(res, 1000 * (attempt + 1)); });
+      }
       refreshStats();
     }
     async function getStats(){
@@ -246,6 +251,8 @@
       try { if (document.getElementById('notice-hide').checked) localStorage.setItem('redline_notice_hide', '1'); } catch(e){}
       w.hidden = true;
     };
+    var no = document.getElementById('notice-open');
+    if (no) no.onclick = function(){ w.hidden = false; };
   })();
 
   /* ---------- 反馈：可拖动按钮 + 提交到共享反馈后端 ---------- */
