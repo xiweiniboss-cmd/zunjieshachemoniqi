@@ -113,6 +113,140 @@
     <p class="help-keyboard"><span class="keycap">SPACE</span> 刹车 <span class="keycap">R</span> 重试 <span class="keycap">P</span> 暂停 <span class="keycap">M</span> 静音</p>
     <button class="primary-btn" id="help-done">知道了 <span>↗</span></button>
   </dialog>
+  <!-- 站点公告 -->
+  <div class="site-notice" id="site-notice" hidden>
+    <div class="site-notice-card">
+      <p class="eyebrow"><span></span>公告 <i>/</i> NOTICE</p>
+      <ol class="notice-list">
+        <li>本网站为刹车模拟器小游戏，不存在任何抹黑任何车企的行为，仅供娱乐。原 GitHub 仓库地址：<a href="https://github.com/bufan1024/redline-brake-game" target="_blank" rel="noopener">bufan1024/redline-brake-game</a></li>
+        <li>有问题请通过反馈按钮进行反馈，谢谢配合</li>
+      </ol>
+      <label class="notice-hide"><input type="checkbox" id="notice-hide"> 下次不再显示</label>
+      <button class="primary-btn notice-ok" id="notice-ok">我知道了 <span>↗</span></button>
+    </div>
+  </div>
+
+  <!-- 反馈悬浮按钮（可拖动） -->
+  <button class="fb-float" id="fb-float" aria-label="问题反馈" title="问题反馈">💬</button>
+
+  <!-- 反馈面板 -->
+  <div class="fb-sheet" id="fb-sheet" hidden>
+    <div class="fb-card">
+      <div class="fb-head">
+        <div><p class="eyebrow" style="justify-content:flex-start">FEEDBACK</p><h2>问题反馈</h2></div>
+        <button class="icon-btn close-btn" id="fb-close" aria-label="关闭反馈">×</button>
+      </div>
+      <textarea id="fb-text" placeholder="遇到什么问题？请描述一下…" maxlength="2000"></textarea>
+      <input id="fb-contact" type="text" placeholder="联系方式（选填，QQ / 微信 / 邮箱）" maxlength="200">
+      <p class="fb-err" id="fb-err" hidden></p>
+      <button class="primary-btn fb-submit" id="fb-submit">提交反馈 <span>↗</span></button>
+    </div>
+  </div>
+
   <script type="module" src="./app.mjs"></script>
+  <script>
+  /* ---------- 站点公告 ---------- */
+  (function(){
+    var hide = false;
+    try { hide = localStorage.getItem('redline_notice_hide') === '1'; } catch(e){}
+    var w = document.getElementById('site-notice');
+    if (!w) return;
+    if (!hide) w.hidden = false;
+    document.getElementById('notice-ok').onclick = function(){
+      try { if (document.getElementById('notice-hide').checked) localStorage.setItem('redline_notice_hide', '1'); } catch(e){}
+      w.hidden = true;
+    };
+  })();
+
+  /* ---------- 反馈：可拖动按钮 + 提交到共享反馈后端 ---------- */
+  (function(){
+    var API = 'https://deepseekchatkele.pages.dev/api/feedback';
+    var btn = document.getElementById('fb-float');
+    try {
+      var p = JSON.parse(localStorage.getItem('redline_fb_pos') || 'null');
+      if (p && typeof p.top === 'number' && typeof p.left === 'number') {
+        btn.style.top = p.top + 'px'; btn.style.left = p.left + 'px';
+        btn.style.right = 'auto'; btn.style.bottom = 'auto';
+      }
+    } catch(e){}
+    var sx, sy, ox, oy, dragging = false, moved = false;
+    btn.addEventListener('pointerdown', function(e){
+      sx = e.clientX; sy = e.clientY;
+      var r = btn.getBoundingClientRect(); ox = r.left; oy = r.top;
+      dragging = false; moved = false;
+      try { btn.setPointerCapture(e.pointerId); } catch(e2){}
+    });
+    btn.addEventListener('pointermove', function(e){
+      if (sx === undefined) return;
+      var dx = e.clientX - sx, dy = e.clientY - sy;
+      if (!dragging && Math.abs(dx) + Math.abs(dy) > 10) dragging = true;
+      if (!dragging) return;
+      moved = true;
+      var nl = Math.min(Math.max(0, ox + dx), window.innerWidth - btn.offsetWidth);
+      var nt = Math.min(Math.max(0, oy + dy), window.innerHeight - btn.offsetHeight);
+      btn.style.left = nl + 'px'; btn.style.top = nt + 'px';
+      btn.style.right = 'auto'; btn.style.bottom = 'auto';
+    });
+    function endDrag(){
+      if (moved) {
+        var r = btn.getBoundingClientRect();
+        try { localStorage.setItem('redline_fb_pos', JSON.stringify({ top: Math.round(r.top), left: Math.round(r.left) })); } catch(e){}
+      }
+      sx = undefined; dragging = false;
+    }
+    btn.addEventListener('pointerup', endDrag);
+    btn.addEventListener('pointercancel', function(){ sx = undefined; dragging = false; });
+    btn.addEventListener('click', function(){
+      if (moved) { moved = false; return; }
+      document.getElementById('fb-sheet').hidden = false;
+    });
+    document.getElementById('fb-close').onclick = function(){
+      document.getElementById('fb-sheet').hidden = true;
+    };
+    var submitting = false;
+    document.getElementById('fb-submit').onclick = async function(){
+      if (submitting) return;
+      var text = document.getElementById('fb-text').value.trim();
+      var contact = document.getElementById('fb-contact').value.trim();
+      var err = document.getElementById('fb-err');
+      err.hidden = true;
+      if (!text) { err.textContent = '请填写反馈内容'; err.hidden = false; return; }
+      submitting = true;
+      var self = this;
+      self.disabled = true;
+      var oldHtml = self.innerHTML;
+      self.innerHTML = '提交中…';
+      try {
+        var r = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: text, contact: contact, site: '[刹车站]' })
+        });
+        var j = await r.json();
+        if (j.ok) {
+          document.getElementById('fb-text').value = '';
+          document.getElementById('fb-contact').value = '';
+          document.getElementById('fb-sheet').hidden = true;
+          toast('反馈已提交，谢谢！');
+        } else {
+          err.textContent = j.error || '提交失败，请稍后重试';
+          err.hidden = false;
+        }
+      } catch(e) {
+        err.textContent = '网络错误，请稍后重试';
+        err.hidden = false;
+      }
+      submitting = false;
+      self.disabled = false;
+      self.innerHTML = oldHtml;
+    };
+    function toast(msg){
+      var t = document.getElementById('toast');
+      if (!t) { alert(msg); return; }
+      t.textContent = msg; t.hidden = false;
+      clearTimeout(t._t); t._t = setTimeout(function(){ t.hidden = true; }, 2200);
+    }
+  })();
+  </script>
 </body>
 </html>
