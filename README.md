@@ -4,6 +4,16 @@
 
 [在线试玩](https://bufan1024.github.io/redline-brake-game/)
 
+## 运行截图
+
+桌面端：
+
+![REDLINE 刹车大师桌面端运行截图](docs/screenshots/desktop.jpg)
+
+手机端：
+
+<img src="docs/screenshots/mobile.jpg" alt="REDLINE 刹车大师手机端运行截图" width="340" />
+
 ## GitHub Pages
 
 推送到 `main` 会通过 GitHub Actions 自动测试并部署。网站仅发布运行所需的 HTML、CSS、JavaScript 与图标；本地启动服务和测试文件保留在源码仓库中。
