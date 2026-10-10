@@ -325,19 +325,25 @@
         brakeBtn.addEventListener('pointercancel', brakeStop);
         brakeBtn.addEventListener('pointerleave', brakeStop);
       }
+      var resultPanel = document.getElementById('result');
       var titleEl = document.getElementById('resultTitle');
-      if(!titleEl) return;
-      var lastText = titleEl.textContent;
-      new MutationObserver(function(){
-        var t = titleEl.textContent;
-        if(t === lastText) return;
-        lastText = t;
-        if(isMuted()) return;
-        var a = null;
-        if(t === '刹停成功') a = successAudio;
-        else if(t === '刹车踏板断裂' || t === '撞上路障') a = failAudio;
-        if(a){ try{ a.currentTime = 0; a.play().catch(function(){}); }catch(e){} }
-      }).observe(titleEl, { childList: true, characterData: true, subtree: true });
+      if(resultPanel && titleEl){
+        var lastPlay = 0;
+        new MutationObserver(function(){
+          if(resultPanel.classList.contains('hidden')) return;
+          var t = titleEl.textContent;
+          var a = null;
+          if(t === '刹停成功') a = successAudio;
+          else if(t === '刹车踏板断裂' || t === '撞上路障') a = failAudio;
+          if(a && !isMuted()){
+            var now = Date.now();
+            if(now - lastPlay > 2000){
+              lastPlay = now;
+              try{ a.currentTime = 0; a.play().catch(function(){}); }catch(e){}
+            }
+          }
+        }).observe(resultPanel, { attributes: true, attributeFilter: ['class'], childList: true, characterData: true, subtree: true });
+      }
     })();
     </script>
 
