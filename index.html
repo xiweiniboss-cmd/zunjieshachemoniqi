@@ -260,6 +260,9 @@ input,textarea{-webkit-user-select:text;user-select:text}
               resultInput.value = v;
               okBtn.textContent = '已保存✓';
             }else{
+              menuInput.value = '';
+              resultInput.value = '';
+              try{ localStorage.removeItem(KEY); }catch(e){}
               okBtn.textContent = d.error || '昵称不可用';
             }
           }).catch(function(){
