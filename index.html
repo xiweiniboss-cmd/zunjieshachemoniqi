@@ -252,6 +252,41 @@
         lastT = now; lastX = t.clientX; lastY = t.clientY;
       }, { passive:false, capture:true });
     })();
+    // meme 音效：成功→遥遥领先，失败→华为质量标准；跟随游戏内静音开关
+    (function(){
+      var successAudio = new Audio('./audio/success.mp3');
+      var failAudio = new Audio('./audio/fail.mp3');
+      successAudio.preload = 'auto'; failAudio.preload = 'auto';
+      function unlock(){
+        [successAudio, failAudio].forEach(function(a){
+          var v = a.volume; a.volume = 0;
+          try{
+            var p = a.play();
+            if(p && p.then) p.then(function(){ a.pause(); a.currentTime = 0; a.volume = v; }).catch(function(){ a.volume = v; });
+            else { a.pause(); a.currentTime = 0; a.volume = v; }
+          }catch(e){ a.volume = v; }
+        });
+        document.removeEventListener('pointerdown', unlock);
+      }
+      document.addEventListener('pointerdown', unlock);
+      function isMuted(){
+        var btn = document.getElementById('muteBtn');
+        return !!(btn && btn.textContent.indexOf('关') >= 0);
+      }
+      var titleEl = document.getElementById('resultTitle');
+      if(!titleEl) return;
+      var lastText = titleEl.textContent;
+      new MutationObserver(function(){
+        var t = titleEl.textContent;
+        if(t === lastText) return;
+        lastText = t;
+        if(isMuted()) return;
+        var a = null;
+        if(t === '刹停成功') a = successAudio;
+        else if(t === '刹车踏板断裂' || t === '撞上路障') a = failAudio;
+        if(a){ try{ a.currentTime = 0; a.play().catch(function(){}); }catch(e){} }
+      }).observe(titleEl, { childList: true, characterData: true, subtree: true });
+    })();
     </script>
 
     <!-- 反馈悬浮按钮（可拖动） -->
