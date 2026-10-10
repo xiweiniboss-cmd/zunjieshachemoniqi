@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>刹车模拟器 · 后台管理</title>
+<style>
+:root{--gold:#d8c39a;--ink:#f5efe6;--bg:#120d10}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans SC',-apple-system,'PingFang SC',sans-serif;min-height:100svh;padding:20px 14px 60px}
+.wrap{max-width:640px;margin:0 auto}
+h1{font-size:20px;letter-spacing:1px;margin:10px 0 4px;color:#f1dcae}
+.sub{font-size:11px;color:#f5efe69e;letter-spacing:2px;margin-bottom:20px}
+.card{background:linear-gradient(135deg,#1a1418,#120d10);border:1px solid #d8c39a47;border-radius:12px;padding:18px;margin-bottom:14px}
+#login input{width:100%;background:#0d0a0c;border:1px solid #d8c39a47;border-radius:8px;color:var(--ink);font-size:15px;padding:12px;margin-bottom:12px;outline:none}
+#login input:focus{border-color:var(--gold)}
+button{background:linear-gradient(135deg,#d8c39a,#b89b6e);color:#1a1418;border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:1px}
+button.ghost{background:#1a1418;color:var(--ink);border:1px solid #d8c39a47}
+button.danger{background:#3a2028;color:#ff8ba0;border:1px solid #ff8ba055}
+button:disabled{opacity:.5}
+#msg{font-size:12px;color:#ff8ba0;margin-top:10px;min-height:18px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.stat{background:linear-gradient(135deg,#1a1418,#120d10);border:1px solid #d8c39a47;border-radius:12px;padding:16px;text-align:center}
+.stat b{display:block;font-size:30px;font-family:ui-monospace,Menlo,monospace;color:var(--gold)}
+.stat span{font-size:11px;color:#f5efe69e;letter-spacing:2px}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+h2{font-size:14px;letter-spacing:2px;color:#f5efe69e;margin:18px 0 10px}
+.run{background:#0d0a0c;border:1px solid #d8c39a2e;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:12px;line-height:1.9}
+.run .t{color:#f5efe69e;font-size:11px}
+.run .score{color:#f1dcae;font-weight:700}
+.run .v{color:#9fd8ff}
+.empty{text-align:center;color:#f5efe69e;font-size:12px;padding:24px}
+.delbtn{background:#3a2028;color:#ff8ba0;border:1px solid #ff8ba055;border-radius:6px;padding:2px 10px;font-size:11px;cursor:pointer;margin-left:6px}
+.back{display:block;text-align:center;margin-top:20px;font-size:12px;color:#f5efe69e}
+.back a{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏁 刹车模拟器 · 后台管理</h1>
+  <p class="sub">BRAKE SIMULATOR / ADMIN</p>
+
+  <div class="card" id="login">
+    <input type="password" id="key" placeholder="请输入管理密码" autocomplete="off">
+    <button id="go" style="width:100%">进入后台</button>
+    <p id="msg"></p>
+  </div>
+
+  <div id="main" hidden>
+    <div class="stats">
+      <div class="stat"><b id="st-n">–</b><span>上榜人数</span></div>
+      <div class="stat"><b id="st-top">–</b><span>最高分</span></div>
+    </div>
+    <div class="btns">
+      <button class="ghost" id="refresh">🔄 刷新</button>
+      <button class="danger" id="reset">🗑 一键清零</button>
+      <button class="ghost" id="gofb">💬 查看反馈</button>
+    </div>
+    <h2>🏆 排行榜（按得分排序）</h2>
+    <div id="runs"></div>
+  </div>
+
+  <p class="back"><a href="../">← 返回游戏</a></p>
+</div>
+
+<script>
+var API = 'https://deepseekchatkele.pages.dev';
+var K = '';
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmtT(t){if(!t)return '--';var d=new Date(t);function p(x){return (x<10?'0':'')+x;}return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());}
+function msg(t){document.getElementById('msg').textContent=t||'';}
+async function call(path, method){
+  var r = await fetch(API+path+'?key='+encodeURIComponent(K),{method:method||'GET'});
+  var j = await r.json().catch(function(){return {ok:false,error:'返回异常'};});
+  if(r.status===403||j.error==='无权'){throw new Error('auth');}
+  return j;
+}
+async function load(){
+  msg('');
+  var j = await call('/api/admin/tp0k/board');
+  if(!j.ok) throw new Error(j.error||'加载失败');
+  var board = j.board||[];
+  document.getElementById('st-n').textContent = board.length;
+  document.getElementById('st-top').textContent = board.length?board[0].s:'–';
+  var h='';
+  board.forEach(function(x,i){
+    h+='<div class="run"><span class="t">'+fmtT(x.ts)+'</span><br>🚗 '+esc(x.n||'无名车手')
+      +' · 🏁刹车速度 <span class="v">'+Number(x.v0).toFixed(1)+' km/h</span>'
+      +' · ⏱刹车时间 <span class="v">'+Number(x.t).toFixed(3)+'s</span>'
+      +' · <span class="score">'+x.s+' 分</span>'
+      +' <button class="delbtn" data-d="'+esc(x.d||'')+'">删</button></div>';
+  });
+  document.getElementById('runs').innerHTML=h||'<div class="empty">暂无上榜记录</div>';
+}
+async function login(){
+  K=document.getElementById('key').value.trim();
+  if(!K){msg('请输入管理密码');return;}
+  msg('验证中…');
+  try{
+    await load();
+    try{localStorage.setItem('tp0k_admin_key',K);}catch(e){}
+    document.getElementById('login').style.display='none';
+    document.getElementById('main').hidden=false;
+  }catch(e){
+    msg(e.message==='auth'?'密码错误':'网络错误，请重试');
+  }
+}
+document.getElementById('go').onclick=login;
+document.getElementById('key').addEventListener('keydown',function(e){if(e.key==='Enter')login();});
+document.getElementById('runs').onclick=async function(e){
+  var b=e.target.closest?e.target.closest('.delbtn'):null;
+  if(!b)return;
+  var d=b.getAttribute('data-d');
+  if(!d||!confirm('删除该设备的排行榜记录？'))return;
+  b.disabled=true;
+  try{
+    var r=await fetch(API+'/api/admin/tp0k/delete-entry?key='+encodeURIComponent(K),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({device:d})});
+    var j=await r.json();
+    if(j.ok)await load();else alert(j.error||'删除失败');
+  }catch(err){alert('删除失败');}
+  b.disabled=false;
+};
+document.getElementById('refresh').onclick=function(){load().catch(function(e){alert(e.message==='auth'?'密码已失效，请刷新页面重登':'加载失败');});};
+document.getElementById('reset').onclick=async function(){
+  if(!confirm('确定要一键清零吗？\n排行榜将全部清空，不可恢复！'))return;
+  if(!confirm('再次确认：真的全部清空？'))return;
+  this.disabled=true;
+  try{
+    var j=await call('/api/admin/tp0k/reset','POST');
+    if(j.ok){alert('已清零');await load();}
+    else alert(j.error||'清零失败');
+  }catch(e){alert('操作失败');}
+  this.disabled=false;
+};
+document.getElementById('gofb').onclick=function(){
+  window.open(API+'/admin?key='+encodeURIComponent(K),'_blank');
+};
+(function(){
+  try{
+    var m=/[?&]key=([^&]+)/.exec(location.search);
+    var k=m?decodeURIComponent(m[1]):(localStorage.getItem('tp0k_admin_key')||'');
+    if(k){document.getElementById('key').value=k;login();}
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
