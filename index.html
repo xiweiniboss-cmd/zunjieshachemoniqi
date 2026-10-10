@@ -191,6 +191,17 @@
       var ab=document.getElementById('announceBtn');
       if(ab){ ab.onclick=function(){ ov.style.display='flex'; }; }
     })();
+    // 禁止 iOS 双击缩放（CSS touch-action 在部分场景下不可靠，用 JS 兜底；按钮除外以免影响游戏操作）
+    (function(){
+      var lastTouchEnd = 0;
+      document.addEventListener('touchend', function(e){
+        var now = Date.now();
+        if (now - lastTouchEnd < 350 && !(e.target && e.target.closest && e.target.closest('button'))) {
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, { passive:false });
+    })();
     </script>
 
     <!-- 反馈悬浮按钮（可拖动） -->
