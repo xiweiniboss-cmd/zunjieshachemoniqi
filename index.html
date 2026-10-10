@@ -329,7 +329,7 @@
       var titleEl = document.getElementById('resultTitle');
       if(resultPanel && titleEl){
         var lastPlay = 0;
-        new MutationObserver(function(){
+        var maybePlay = function(){
           if(resultPanel.classList.contains('hidden')) return;
           var t = titleEl.textContent;
           var a = null;
@@ -342,7 +342,10 @@
               try{ a.currentTime = 0; a.play().catch(function(){}); }catch(e){}
             }
           }
-        }).observe(resultPanel, { attributes: true, attributeFilter: ['class'], childList: true, characterData: true, subtree: true });
+        };
+        var obs = new MutationObserver(maybePlay);
+        obs.observe(resultPanel, { attributes: true, attributeFilter: ['class'] });
+        obs.observe(titleEl, { childList: true, characterData: true, subtree: true });
       }
     })();
     </script>
