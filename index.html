@@ -179,6 +179,37 @@
       </div>
     </div>
     <script>
+    // 排行榜接口转发：游戏内用相对路径 /api/*，转到 DeepSeek worker；提交时注入 deviceId
+    (function(){
+      var API_BASE = 'https://deepseekchatkele.pages.dev';
+      function getDeviceId(){
+        try{
+          var id = localStorage.getItem('tp0k_device_id');
+          if(!id){ id = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2,10); localStorage.setItem('tp0k_device_id', id); }
+          return id;
+        }catch(e){ return 'anon'; }
+      }
+      var _fetch = window.fetch;
+      window.fetch = function(url, opts){
+        if(typeof url === 'string'){
+          if(url.indexOf('/api/leaderboard') === 0){
+            url = API_BASE + url;
+          } else if(url === '/api/score'){
+            url = API_BASE + '/api/score';
+            if(opts && opts.body){
+              try{
+                var b = JSON.parse(opts.body);
+                b.device = getDeviceId();
+                opts = Object.assign({}, opts, { body: JSON.stringify(b) });
+              }catch(e){}
+            }
+          }
+        }
+        return _fetch.call(this, url, opts);
+      };
+    })();
+    </script>
+    <script>
     (function(){
       var KEY='brake_tp0k_announce_v1';
       try{ if(localStorage.getItem(KEY)) return; }catch(e){}
