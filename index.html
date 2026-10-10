@@ -37,10 +37,11 @@
 .fb-submit:disabled{opacity:.6}
 #fb-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:9600;background:#1a1418;border:1px solid #d8c39a47;color:#f1dcae;font-size:14px;padding:12px 22px;border-radius:24px;box-shadow:0 8px 30px #000a;display:none;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
 /* ---------- 主界面车手名称 ---------- */
-.menu-nickname{margin:12px 0 4px;text-align:center}
-.menu-nickname input{width:min(280px,80%);background:#0d0a0c;border:1px solid #d8c39a47;border-radius:10px;color:#f5efe6;font-size:14px;padding:10px 14px;outline:none;text-align:center;font-family:inherit}
+.menu-nickname{margin:12px auto 4px;text-align:center;display:flex;gap:8px;justify-content:center;align-items:center;max-width:min(340px,88%)}
+.menu-nickname input{flex:1;min-width:0;background:#0d0a0c;border:1px solid #d8c39a47;border-radius:10px;color:#f5efe6;font-size:14px;padding:10px 14px;outline:none;text-align:center;font-family:inherit}
 .menu-nickname input:focus{border-color:#d8c39a}
 .menu-nickname input::placeholder{color:#f5efe69e}
+.menu-nickname .btn{flex-shrink:0;padding:10px 18px}
 /* ---------- 窄屏 HUD 紧凑化 ---------- */
 @media (max-width:560px){
   .hud-top{left:calc(8px + env(safe-area-inset-left));right:calc(8px + env(safe-area-inset-right));gap:8px}
@@ -121,6 +122,7 @@
       </div>
       <div class="menu-nickname">
         <input id="menuNickname" maxlength="12" placeholder="🏁 输入车手名称，成功自动上榜" autocomplete="off">
+        <button id="menuNicknameOk" class="btn">确定</button>
       </div>
       <button id="muteBtn" class="mute">音效：开</button>
       <p id="keyHint" class="hint-keys">按住屏幕任意位置或右下角按钮踩刹车</p>
@@ -234,6 +236,18 @@
         try{ localStorage.setItem(KEY, v); }catch(e){}
         resultInput.value = v;
       });
+      var okBtn = document.getElementById('menuNicknameOk');
+      if(okBtn){
+        okBtn.addEventListener('click', function(){
+          var v = menuInput.value.trim();
+          try{ localStorage.setItem(KEY, v); }catch(e){}
+          resultInput.value = v;
+          var old = okBtn.textContent;
+          okBtn.textContent = v ? '已保存✓' : '先输入名字';
+          okBtn.disabled = true;
+          setTimeout(function(){ okBtn.textContent = old; okBtn.disabled = false; }, 1200);
+        });
+      }
       var autoDone = false;
       new MutationObserver(function(){
         if(resultPanel.classList.contains('hidden')){ autoDone = false; return; }
