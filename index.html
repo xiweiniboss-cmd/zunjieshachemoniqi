@@ -7,6 +7,18 @@
     <link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;🛑&lt;/text&gt;&lt;/svg&gt;">
     <script type="module" crossorigin="" src="./assets/index-BMfj2Faj.js"></script>
     <link rel="stylesheet" crossorigin="" href="./assets/index-D0EtOSyi.css">
+    <style>
+#announceOverlay{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);padding:20px;box-sizing:border-box}
+#announceBox{max-width:430px;width:100%;background:#1a1418;border:1px solid #d8c39a47;border-radius:16px;padding:24px 20px;color:#f5efe6;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Helvetica Neue,sans-serif;box-shadow:0 12px 48px rgba(0,0,0,.6)}
+#announceBox h2{margin:0 0 4px;font-size:20px;color:#f1dcae;text-align:center}
+#announceBox .announce-sub{margin:0 0 14px;text-align:center;font-size:12px;color:#f5efe69e}
+#announceBox ol{margin:0 0 18px;padding-left:22px;font-size:14px;line-height:1.75}
+#announceBox ol li{margin-bottom:8px}
+#announceBox a{color:#f1dcae;word-break:break-all}
+#announceBox .announce-actions{display:flex;gap:12px;align-items:center}
+#announceBox .announce-btn{flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#d8c39a,#b89b6e);color:#1a1418;font-size:16px;font-weight:700;cursor:pointer}
+#announceBox .announce-nomore{display:flex;align-items:center;gap:6px;font-size:13px;color:#f5efe69e;cursor:pointer;white-space:nowrap}
+    </style>
   </head>
   <body>
     <div id="app"><canvas style="display: block; width: 52px; height: 713px;" data-engine="three.js r186" width="52" height="713"></canvas></div>
@@ -114,6 +126,34 @@
     </section>
 
     <div id="loading" class="loading done">正在生成 3D 场景…</div>
+
+    <div id="announceOverlay">
+      <div id="announceBox">
+        <h2>📢 站长公告</h2>
+        <p class="announce-sub">全新版本说明</p>
+        <ol>
+          <li>原版刹车模拟器还是太简单了，所以我们换成了更难一点的、画面也更精细的版本——比上一代刹车模拟器遥遥领先！</li>
+          <li>本站为原网站 <a href="https://brake.tp0k.us" target="_blank" rel="noopener">brake.tp0k.us</a> 的移植版，防止鱼总 OTA 原网站导致被卡脖子</li>
+          <li>排行榜等功能稍后更新</li>
+        </ol>
+        <div class="announce-actions">
+          <label class="announce-nomore"><input type="checkbox" id="announceNomore"> 下次不再显示</label>
+          <button class="announce-btn" id="announceClose">开始游戏</button>
+        </div>
+      </div>
+    </div>
+    <script>
+    (function(){
+      var KEY='brake_tp0k_announce_v1';
+      try{ if(localStorage.getItem(KEY)) return; }catch(e){}
+      var ov=document.getElementById('announceOverlay');
+      ov.style.display='flex';
+      document.getElementById('announceClose').onclick=function(){
+        try{ if(document.getElementById('announceNomore').checked) localStorage.setItem(KEY,'1'); }catch(e){}
+        ov.style.display='none';
+      };
+    })();
+    </script>
   <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920" integrity="sha512-L0ha0OXavK/8okipN9F8BtP84dg9DUhPERbBXzwI6dgTA55d2+yweo3pn5CSFYs45/r8md2+xvUPtTdvTNRfjA==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;1ae424e0327242e2af9aa45c7e4f305a&quot;,&quot;r&quot;:1,&quot;spa&quot;:2}" crossorigin="anonymous"></script>
 
 
