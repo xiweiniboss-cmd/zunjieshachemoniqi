@@ -18,6 +18,24 @@
 #announceBox .announce-actions{display:flex;gap:12px;align-items:center}
 #announceBox .announce-btn{flex:1;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#d8c39a,#b89b6e);color:#1a1418;font-size:16px;font-weight:700;cursor:pointer}
 #announceBox .announce-nomore{display:flex;align-items:center;gap:6px;font-size:13px;color:#f5efe69e;cursor:pointer;white-space:nowrap}
+/* ---------- 反馈悬浮按钮（可拖动） ---------- */
+.fb-float{position:fixed;top:140px;right:18px;width:52px;height:52px;border-radius:50%;background:#d8c39a;color:#1a1418;font-size:24px;z-index:9000;box-shadow:0 4px 18px #d8c39a55;touch-action:none;user-select:none;-webkit-user-select:none;display:grid;place-items:center;border:1px solid #f1dcae66;cursor:pointer;font-family:inherit}
+.fb-sheet{position:fixed;inset:0;z-index:9500;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.66);backdrop-filter:blur(7px)}
+.fb-sheet[hidden]{display:none}
+.fb-card{width:min(460px,calc(100vw - 40px));max-height:88svh;overflow-y:auto;background:linear-gradient(135deg,#1a1418,#120d10);border:1px solid #d8c39a47;border-radius:16px;box-shadow:0 24px 90px #0009;padding:24px 22px;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;box-sizing:border-box}
+.fb-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:14px}
+.fb-head .eyebrow{font-size:11px;letter-spacing:2px;color:#f5efe69e;margin:0}
+.fb-head h2{font-size:22px;font-weight:700;margin:8px 0 0;color:#f1dcae;letter-spacing:-.5px}
+.fb-close{background:none;border:none;color:#f5efe69e;font-size:26px;cursor:pointer;line-height:1;padding:4px}
+.fb-card textarea{width:100%;min-height:110px;background:#0d0a0c;border:1px solid #d8c39a47;border-radius:8px;color:#f5efe6;font-size:14px;padding:12px;outline:none;resize:vertical;font-family:inherit;line-height:1.7;box-sizing:border-box}
+.fb-card textarea:focus{border-color:#d8c39a}
+.fb-card input[type=text]{width:100%;margin-top:10px;background:#0d0a0c;border:1px solid #d8c39a47;border-radius:8px;color:#f5efe6;font-size:14px;padding:11px 12px;outline:none;font-family:inherit;box-sizing:border-box}
+.fb-card input[type=text]:focus{border-color:#d8c39a}
+.fb-err{font-size:12px;color:#ff8c7e;margin:10px 0 0;line-height:1.6}
+.fb-err[hidden]{display:none}
+.fb-submit{width:100%;margin-top:14px;padding:13px;border:none;border-radius:10px;background:linear-gradient(135deg,#d8c39a,#b89b6e);color:#1a1418;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
+.fb-submit:disabled{opacity:.6}
+#fb-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:9600;background:#1a1418;border:1px solid #d8c39a47;color:#f1dcae;font-size:14px;padding:12px 22px;border-radius:24px;box-shadow:0 8px 30px #000a;display:none;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
     </style>
   </head>
   <body>
@@ -156,6 +174,112 @@
       };
       var ab=document.getElementById('announceBtn');
       if(ab){ ab.onclick=function(){ ov.style.display='flex'; }; }
+    })();
+    </script>
+
+    <!-- 反馈悬浮按钮（可拖动） -->
+    <button class="fb-float" id="fb-float" aria-label="问题反馈" title="问题反馈">💬</button>
+
+    <!-- 反馈面板 -->
+    <div class="fb-sheet" id="fb-sheet" hidden>
+      <div class="fb-card">
+        <div class="fb-head">
+          <div><p class="eyebrow">FEEDBACK</p><h2>问题反馈</h2></div>
+          <button class="fb-close" id="fb-close" aria-label="关闭反馈">×</button>
+        </div>
+        <textarea id="fb-text" placeholder="遇到什么问题？请描述一下…" maxlength="2000"></textarea>
+        <input id="fb-contact" type="text" placeholder="联系方式（选填，QQ / 微信 / 邮箱）" maxlength="200">
+        <p class="fb-err" id="fb-err" hidden></p>
+        <button class="fb-submit" id="fb-submit">提交反馈 ↗</button>
+      </div>
+    </div>
+    <div id="fb-toast"></div>
+    <script>
+    (function(){
+      var API = 'https://deepseekchatkele.pages.dev/api/feedback';
+      function fbToast(msg){
+        var t=document.getElementById('fb-toast');
+        t.textContent=msg; t.style.display='block';
+        setTimeout(function(){ t.style.display='none'; },2200);
+      }
+      var btn = document.getElementById('fb-float');
+      try {
+        var p = JSON.parse(localStorage.getItem('brake_tp0k_fb_pos') || 'null');
+        if (p && typeof p.top === 'number' && typeof p.left === 'number') {
+          btn.style.top = p.top + 'px'; btn.style.left = p.left + 'px';
+          btn.style.right = 'auto'; btn.style.bottom = 'auto';
+        }
+      } catch(e){}
+      var sx, sy, ox, oy, dragging = false, moved = false;
+      btn.addEventListener('pointerdown', function(e){
+        sx = e.clientX; sy = e.clientY;
+        var r = btn.getBoundingClientRect(); ox = r.left; oy = r.top;
+        dragging = false; moved = false;
+        try { btn.setPointerCapture(e.pointerId); } catch(e2){}
+      });
+      btn.addEventListener('pointermove', function(e){
+        if (sx === undefined) return;
+        var dx = e.clientX - sx, dy = e.clientY - sy;
+        if (!dragging && Math.abs(dx) + Math.abs(dy) > 10) dragging = true;
+        if (!dragging) return;
+        moved = true;
+        var nl = Math.min(Math.max(0, ox + dx), window.innerWidth - btn.offsetWidth);
+        var nt = Math.min(Math.max(0, oy + dy), window.innerHeight - btn.offsetHeight);
+        btn.style.left = nl + 'px'; btn.style.top = nt + 'px';
+        btn.style.right = 'auto'; btn.style.bottom = 'auto';
+      });
+      function endDrag(){
+        if (moved) {
+          var r = btn.getBoundingClientRect();
+          try { localStorage.setItem('brake_tp0k_fb_pos', JSON.stringify({ top: Math.round(r.top), left: Math.round(r.left) })); } catch(e){}
+        }
+        sx = undefined; dragging = false;
+      }
+      btn.addEventListener('pointerup', endDrag);
+      btn.addEventListener('pointercancel', function(){ sx = undefined; dragging = false; });
+      btn.addEventListener('click', function(){
+        if (moved) { moved = false; return; }
+        document.getElementById('fb-sheet').hidden = false;
+      });
+      document.getElementById('fb-close').onclick = function(){
+        document.getElementById('fb-sheet').hidden = true;
+      };
+      var submitting = false;
+      document.getElementById('fb-submit').onclick = async function(){
+        if (submitting) return;
+        var text = document.getElementById('fb-text').value.trim();
+        var contact = document.getElementById('fb-contact').value.trim();
+        var err = document.getElementById('fb-err');
+        err.hidden = true;
+        if (!text) { err.textContent = '请填写反馈内容'; err.hidden = false; return; }
+        submitting = true;
+        var self = this;
+        self.disabled = true;
+        self.textContent = '提交中…';
+        try {
+          var r = await fetch(API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text, contact: contact, site: '[刹车站]' })
+          });
+          var j = await r.json();
+          if (j.ok) {
+            document.getElementById('fb-text').value = '';
+            document.getElementById('fb-contact').value = '';
+            document.getElementById('fb-sheet').hidden = true;
+            fbToast('反馈已提交，谢谢！');
+          } else {
+            err.textContent = j.error || '提交失败，请稍后重试';
+            err.hidden = false;
+          }
+        } catch(e) {
+          err.textContent = '网络错误，请稍后重试';
+          err.hidden = false;
+        }
+        submitting = false;
+        self.disabled = false;
+        self.textContent = '提交反馈 ↗';
+      };
     })();
     </script>
   <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920" integrity="sha512-L0ha0OXavK/8okipN9F8BtP84dg9DUhPERbBXzwI6dgTA55d2+yweo3pn5CSFYs45/r8md2+xvUPtTdvTNRfjA==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;1ae424e0327242e2af9aa45c7e4f305a&quot;,&quot;r&quot;:1,&quot;spa&quot;:2}" crossorigin="anonymous"></script>
