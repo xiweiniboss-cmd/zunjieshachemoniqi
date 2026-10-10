@@ -256,15 +256,13 @@
     (function(){
       var successAudio = new Audio('./audio/success.mp3');
       var failAudio = new Audio('./audio/fail.mp3');
-      var brakeAudio = new Audio('./audio/brake.mp3');
       successAudio.preload = 'auto'; failAudio.preload = 'auto';
-      brakeAudio.preload = 'auto'; brakeAudio.loop = true;
       function isMuted(){
         var btn = document.getElementById('muteBtn');
         return !!(btn && btn.textContent.indexOf('关') >= 0);
       }
       function unlock(){
-        [successAudio, failAudio, brakeAudio].forEach(function(a){
+        [successAudio, failAudio].forEach(function(a){
           var v = a.volume; a.volume = 0;
           try{
             var p = a.play();
@@ -275,34 +273,50 @@
         document.removeEventListener('pointerdown', unlock);
       }
       document.addEventListener('pointerdown', unlock);
-      // 刹车按钮：啊啊声循环，力度越大音调越高
+      // 刹车啊啊声：Web Audio 无缝循环，力度越大音调越高
+      var actx = null, brakeBuf = null, brakeSrc = null;
+      var brakePlaying = false, brakeRaf = 0;
+      try{
+        actx = new (window.AudioContext || window.webkitAudioContext)();
+        fetch('./audio/brake.mp3').then(function(r){ return r.arrayBuffer(); })
+          .then(function(ab){ return actx.decodeAudioData(ab); })
+          .then(function(buf){ brakeBuf = buf; }).catch(function(){});
+      }catch(e){}
       function getForce(){
         var el = document.getElementById('forceValue');
         if(!el) return 0;
         var m = el.textContent.match(/([\d.]+)/);
         return m ? parseFloat(m[1]) : 0;
       }
-      var brakePlaying = false, brakeRaf = 0;
       function brakeTick(){
-        if(!brakePlaying) return;
+        if(!brakePlaying || !brakeSrc || !actx) return;
         var f = getForce(); // 0~1612N
-        brakeAudio.playbackRate = 0.6 + Math.min(f,1612) / 1612 * 1.0; // 0.6x~1.6x
+        try{ brakeSrc.playbackRate.setTargetAtTime(0.6 + Math.min(f,1612) / 1612 * 1.0, actx.currentTime, 0.05); }catch(e){}
         brakeRaf = requestAnimationFrame(brakeTick);
       }
       function brakeStart(){
+        if(!actx || !brakeBuf) return;
+        try{ if(actx.state === 'suspended') actx.resume(); }catch(e){}
         if(isMuted() || brakePlaying) return;
         brakePlaying = true;
         try{
-          brakeAudio.currentTime = 0;
-          var p = brakeAudio.play();
-          if(p && p.catch) p.catch(function(){ brakePlaying = false; });
-        }catch(e){ brakePlaying = false; return; }
+          brakeSrc = actx.createBufferSource();
+          brakeSrc.buffer = brakeBuf;
+          brakeSrc.loop = true;
+          brakeSrc.playbackRate.value = 0.6;
+          brakeSrc.connect(actx.destination);
+          brakeSrc.start();
+        }catch(e){ brakePlaying = false; brakeSrc = null; return; }
         brakeTick();
       }
       function brakeStop(){
         brakePlaying = false;
         if(brakeRaf) cancelAnimationFrame(brakeRaf);
-        try{ brakeAudio.pause(); }catch(e){}
+        if(brakeSrc){
+          try{ brakeSrc.stop(); }catch(e){}
+          try{ brakeSrc.disconnect(); }catch(e){}
+          brakeSrc = null;
+        }
       }
       var brakeBtn = document.getElementById('brakeBtn');
       if(brakeBtn){
