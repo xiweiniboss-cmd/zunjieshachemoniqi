@@ -122,7 +122,7 @@
       <ol class="notice-list">
         <li>本网站为刹车模拟器小游戏，不存在任何抹黑任何车企的行为，仅供娱乐。原 GitHub 仓库地址：<a href="https://github.com/bufan1024/redline-brake-game" target="_blank" rel="noopener">bufan1024/redline-brake-game</a></li>
         <li>有问题请通过反馈按钮进行反馈，谢谢配合</li>
-        <li>目前计数/排行榜无法实时统计：你们恶意游玩太猛了，被法务部（不是）制裁了，大概上午修复</li>
+        <li id="kv-quota-notice">因 Cloudflare 免费额度限制，当前游玩记录暂时无法计入排行榜，将于明日早上 8 点自动恢复，尽请谅解</li>
       </ol>
       <label class="notice-hide"><input type="checkbox" id="notice-hide"> 下次不再显示</label>
       <button class="primary-btn notice-ok" id="notice-ok">我知道了 <span>↗</span></button>
@@ -244,7 +244,7 @@
 
   /* ---------- 站点公告 ---------- */
   (function(){
-    var NOTICE_VER = '20261010a';
+    var NOTICE_VER = '20261010b';
     var hide = false, ver = '';
     try {
       hide = localStorage.getItem('redline_notice_hide') === '1';
