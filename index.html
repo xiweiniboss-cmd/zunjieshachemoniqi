@@ -256,9 +256,10 @@
     (function(){
       var successAudio = new Audio('./audio/success.mp3');
       var failAudio = new Audio('./audio/fail.mp3');
-      successAudio.preload = 'auto'; failAudio.preload = 'auto';
+      var brakeAudio = new Audio('./audio/brake.mp3');
+      successAudio.preload = 'auto'; failAudio.preload = 'auto'; brakeAudio.preload = 'auto';
       function unlock(){
-        [successAudio, failAudio].forEach(function(a){
+        [successAudio, failAudio, brakeAudio].forEach(function(a){
           var v = a.volume; a.volume = 0;
           try{
             var p = a.play();
@@ -272,6 +273,14 @@
       function isMuted(){
         var btn = document.getElementById('muteBtn');
         return !!(btn && btn.textContent.indexOf('关') >= 0);
+      }
+      // 刹车按钮：啊啊声
+      var brakeBtn = document.getElementById('brakeBtn');
+      if(brakeBtn){
+        brakeBtn.addEventListener('pointerdown', function(){
+          if(isMuted()) return;
+          try{ brakeAudio.currentTime = 0; brakeAudio.play().catch(function(){}); }catch(e){}
+        });
       }
       var titleEl = document.getElementById('resultTitle');
       if(!titleEl) return;
