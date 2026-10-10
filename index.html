@@ -252,12 +252,17 @@
         lastT = now; lastX = t.clientX; lastY = t.clientY;
       }, { passive:false, capture:true });
     })();
-    // meme 音效：成功→遥遥领先，失败→华为质量标准；跟随游戏内静音开关
+    // meme 音效：成功→遥遥领先，失败→华为质量标准，刹车按钮→啊啊声（力度变调循环）；跟随游戏内静音开关
     (function(){
       var successAudio = new Audio('./audio/success.mp3');
       var failAudio = new Audio('./audio/fail.mp3');
       var brakeAudio = new Audio('./audio/brake.mp3');
-      successAudio.preload = 'auto'; failAudio.preload = 'auto'; brakeAudio.preload = 'auto';
+      successAudio.preload = 'auto'; failAudio.preload = 'auto';
+      brakeAudio.preload = 'auto'; brakeAudio.loop = true;
+      function isMuted(){
+        var btn = document.getElementById('muteBtn');
+        return !!(btn && btn.textContent.indexOf('关') >= 0);
+      }
       function unlock(){
         [successAudio, failAudio, brakeAudio].forEach(function(a){
           var v = a.volume; a.volume = 0;
@@ -270,17 +275,41 @@
         document.removeEventListener('pointerdown', unlock);
       }
       document.addEventListener('pointerdown', unlock);
-      function isMuted(){
-        var btn = document.getElementById('muteBtn');
-        return !!(btn && btn.textContent.indexOf('关') >= 0);
+      // 刹车按钮：啊啊声循环，力度越大音调越高
+      function getForce(){
+        var el = document.getElementById('forceValue');
+        if(!el) return 0;
+        var m = el.textContent.match(/([\d.]+)/);
+        return m ? parseFloat(m[1]) : 0;
       }
-      // 刹车按钮：啊啊声
+      var brakePlaying = false, brakeRaf = 0;
+      function brakeTick(){
+        if(!brakePlaying) return;
+        var f = getForce(); // 0~1612N
+        brakeAudio.playbackRate = 0.6 + Math.min(f,1612) / 1612 * 1.0; // 0.6x~1.6x
+        brakeRaf = requestAnimationFrame(brakeTick);
+      }
+      function brakeStart(){
+        if(isMuted() || brakePlaying) return;
+        brakePlaying = true;
+        try{
+          brakeAudio.currentTime = 0;
+          var p = brakeAudio.play();
+          if(p && p.catch) p.catch(function(){ brakePlaying = false; });
+        }catch(e){ brakePlaying = false; return; }
+        brakeTick();
+      }
+      function brakeStop(){
+        brakePlaying = false;
+        if(brakeRaf) cancelAnimationFrame(brakeRaf);
+        try{ brakeAudio.pause(); }catch(e){}
+      }
       var brakeBtn = document.getElementById('brakeBtn');
       if(brakeBtn){
-        brakeBtn.addEventListener('pointerdown', function(){
-          if(isMuted()) return;
-          try{ brakeAudio.currentTime = 0; brakeAudio.play().catch(function(){}); }catch(e){}
-        });
+        brakeBtn.addEventListener('pointerdown', brakeStart);
+        brakeBtn.addEventListener('pointerup', brakeStop);
+        brakeBtn.addEventListener('pointercancel', brakeStop);
+        brakeBtn.addEventListener('pointerleave', brakeStop);
       }
       var titleEl = document.getElementById('resultTitle');
       if(!titleEl) return;
