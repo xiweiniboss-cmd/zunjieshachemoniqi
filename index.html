@@ -156,6 +156,7 @@
       <div class="actions">
         <button id="retryBtn" class="btn primary">再来一次</button>
         <button id="resultBoardBtn" class="btn">排行榜</button>
+        <button id="homeBtn" class="btn">🏠 主菜单</button>
       </div>
     </section>
 
@@ -250,6 +251,19 @@
           }catch(e){}
         }, 400);
       }).observe(resultPanel, { attributes: true, attributeFilter: ['class'] });
+    })();
+    // 返回主菜单按钮
+    (function(){
+      var homeBtn = document.getElementById('homeBtn');
+      if(!homeBtn) return;
+      homeBtn.addEventListener('click', function(){
+        var r = document.getElementById('result');
+        var b = document.getElementById('board');
+        var m = document.getElementById('menu');
+        if(r) r.classList.add('hidden');
+        if(b) b.classList.add('hidden');
+        if(m) m.classList.remove('hidden');
+      });
     })();
     </script>
     <script>
