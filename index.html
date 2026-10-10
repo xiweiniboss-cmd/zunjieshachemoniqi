@@ -202,6 +202,25 @@
         lastTouchEnd = now;
       }, { passive:false });
     })();
+    // 最狠方案：capture 阶段拦截真·双击 —— 第二次 touchstart 又快又近就直接吃掉，不让浏览器触发缩放手势
+    (function(){
+      var lastT = 0, lastX = 0, lastY = 0;
+      function isInteractive(el){
+        return !!(el && el.closest && el.closest('button, input, textarea, select, a'));
+      }
+      document.addEventListener('touchstart', function(e){
+        if(e.touches.length !== 1) return;
+        var t = e.touches[0];
+        var now = Date.now();
+        var dt = now - lastT;
+        var dist = Math.hypot(t.clientX - lastX, t.clientY - lastY);
+        if(dt < 280 && dist < 35 && !isInteractive(e.target)){
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        lastT = now; lastX = t.clientX; lastY = t.clientY;
+      }, { passive:false, capture:true });
+    })();
     </script>
 
     <!-- 反馈悬浮按钮（可拖动） -->
