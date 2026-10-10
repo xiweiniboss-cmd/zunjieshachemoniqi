@@ -242,12 +242,34 @@ input,textarea{-webkit-user-select:text;user-select:text}
       if(okBtn){
         okBtn.addEventListener('click', function(){
           var v = menuInput.value.trim();
-          try{ localStorage.setItem(KEY, v); }catch(e){}
-          resultInput.value = v;
-          var old = okBtn.textContent;
-          okBtn.textContent = v ? '已保存✓' : '先输入名字';
+          if(!v){
+            okBtn.textContent = '先输入名字';
+            okBtn.disabled = true;
+            setTimeout(function(){ okBtn.textContent = '确定'; okBtn.disabled = false; }, 1200);
+            return;
+          }
+          okBtn.textContent = '检测中…';
           okBtn.disabled = true;
-          setTimeout(function(){ okBtn.textContent = old; okBtn.disabled = false; }, 1200);
+          fetch('https://deepseekchatkele.pages.dev/api/check-nickname', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nickname: v })
+          }).then(function(r){ return r.json().catch(function(){ return {}; }); }).then(function(d){
+            if(d.ok){
+              try{ localStorage.setItem(KEY, v); }catch(e){}
+              resultInput.value = v;
+              okBtn.textContent = '已保存✓';
+            }else{
+              okBtn.textContent = d.error || '昵称不可用';
+            }
+          }).catch(function(){
+            // 网络失败：本地先保存，提交时后端会再拦
+            try{ localStorage.setItem(KEY, v); }catch(e){}
+            resultInput.value = v;
+            okBtn.textContent = '已保存✓';
+          }).finally(function(){
+            setTimeout(function(){ okBtn.textContent = '确定'; okBtn.disabled = false; }, 1500);
+          });
         });
       }
       var autoDone = false;
