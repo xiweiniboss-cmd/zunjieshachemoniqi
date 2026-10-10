@@ -281,6 +281,20 @@ input,textarea{-webkit-user-select:text;user-select:text}
         if(m) m.classList.remove('hidden');
       });
     })();
+    // 禁长按菜单：QQ/小米等浏览器 CSS 压不住，用 JS 拦截 contextmenu 和 selectstart（输入框除外）
+    (function(){
+      function allowInput(e){
+        return e.target && e.target.closest && e.target.closest('input,textarea');
+      }
+      document.addEventListener('contextmenu', function(e){
+        if(allowInput(e)) return;
+        e.preventDefault();
+      });
+      document.addEventListener('selectstart', function(e){
+        if(allowInput(e)) return;
+        e.preventDefault();
+      });
+    })();
     </script>
     <script>
     (function(){
