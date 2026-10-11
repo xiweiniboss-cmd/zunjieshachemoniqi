@@ -368,13 +368,14 @@ input,textarea{-webkit-user-select:text;user-select:text}
     (function(){
       var successAudio = new Audio('./audio/success.mp3');
       var failAudio = new Audio('./audio/fail.mp3');
-      successAudio.preload = 'auto'; failAudio.preload = 'auto';
+      var crashAudio = new Audio('./audio/crash.mp3');
+      successAudio.preload = 'auto'; failAudio.preload = 'auto'; crashAudio.preload = 'auto';
       function isMuted(){
         var btn = document.getElementById('muteBtn');
         return !!(btn && btn.textContent.indexOf('关') >= 0);
       }
       function unlock(){
-        [successAudio, failAudio].forEach(function(a){
+        [successAudio, failAudio, crashAudio].forEach(function(a){
           var v = a.volume; a.volume = 0;
           try{
             var p = a.play();
@@ -446,7 +447,8 @@ input,textarea{-webkit-user-select:text;user-select:text}
           var t = titleEl.textContent;
           var a = null;
           if(t === '刹停成功') a = successAudio;
-          else if(t === '刹车踏板断裂' || t === '撞上路障') a = failAudio;
+          else if(t === '刹车踏板断裂') a = crashAudio;
+          else if(t === '撞上路障') a = failAudio;
           if(a && !isMuted()){
             var now = Date.now();
             if(now - lastPlay > 2000){
