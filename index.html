@@ -404,6 +404,13 @@ input,textarea{-webkit-user-select:text;user-select:text}
       function brakeTick(){
         if(!brakePlaying || !brakeSrc || !actx) return;
         var f = getForce(); // 0~1612N
+        // 踏板断裂瞬间（1612N）立即播放撞上了音频，每局只播一次
+        if(f >= 1612 && !window._crashPlayed){
+          window._crashPlayed = true;
+          if(!isMuted()){
+            try{ crashAudio.currentTime = 0; crashAudio.play().catch(function(){}); }catch(e){}
+          }
+        }
         try{ brakeSrc.playbackRate.setTargetAtTime(0.6 + Math.min(f,1612) / 1612 * 1.0, actx.currentTime, 0.05); }catch(e){}
         brakeRaf = requestAnimationFrame(brakeTick);
       }
@@ -438,6 +445,11 @@ input,textarea{-webkit-user-select:text;user-select:text}
         brakeBtn.addEventListener('pointercancel', brakeStop);
         brakeBtn.addEventListener('pointerleave', brakeStop);
       }
+      // 新开局重置断裂音效标记
+      ['startBtn','retryBtn'].forEach(function(id){
+        var b = document.getElementById(id);
+        if(b) b.addEventListener('click', function(){ window._crashPlayed = false; });
+      });
       var resultPanel = document.getElementById('result');
       var titleEl = document.getElementById('resultTitle');
       if(resultPanel && titleEl){
@@ -447,8 +459,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
           var t = titleEl.textContent;
           var a = null;
           if(t === '刹停成功') a = successAudio;
-          else if(t === '刹车踏板断裂') a = crashAudio;
-          else if(t === '撞上路障') a = failAudio;
+          else if(t === '刹车踏板断裂' || t === '撞上路障') a = failAudio;
           if(a && !isMuted()){
             var now = Date.now();
             if(now - lastPlay > 2000){
