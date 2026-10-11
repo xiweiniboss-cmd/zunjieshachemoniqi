@@ -27,6 +27,7 @@ button:disabled{opacity:.5}
 h2{font-size:14px;letter-spacing:2px;color:#f5efe69e;margin:18px 0 10px}
 .run{background:#0d0a0c;border:1px solid #d8c39a2e;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:12px;line-height:1.9}
 .run .t{color:#f5efe69e;font-size:11px}
+.run .ip{color:#f5efe66e;font-size:11px;font-family:monospace}
 .run .score{color:#f1dcae;font-weight:700}
 .run .v{color:#9fd8ff}
 .empty{text-align:center;color:#f5efe69e;font-size:12px;padding:24px}
@@ -84,7 +85,7 @@ async function load(){
   document.getElementById('st-top').textContent = board.length?board[0].s:'–';
   var h='';
   board.forEach(function(x,i){
-    h+='<div class="run"><span class="t">'+fmtT(x.ts)+'</span><br>🚗 '+esc(x.n||'无名车手')
+    h+='<div class="run"><span class="t">'+fmtT(x.ts)+'</span> <span class="ip">'+esc(x.ip||'--')+'</span><br>🚗 '+esc(x.n||'无名车手')
       +' · 🏁刹车速度 <span class="v">'+Number(x.v0).toFixed(1)+' km/h</span>'
       +' · ⏱刹车时间 <span class="v">'+Number(x.t).toFixed(3)+'s</span>'
       +' · <span class="score">'+x.s+' 分</span>'
