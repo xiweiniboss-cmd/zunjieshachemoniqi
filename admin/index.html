@@ -19,9 +19,11 @@ button.ghost{background:#1a1418;color:var(--ink);border:1px solid #d8c39a47}
 button.danger{background:#3a2028;color:#ff8ba0;border:1px solid #ff8ba055}
 button:disabled{opacity:.5}
 #msg{font-size:12px;color:#ff8ba0;margin-top:10px;min-height:18px}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
-.stat{background:linear-gradient(135deg,#1a1418,#120d10);border:1px solid #d8c39a47;border-radius:12px;padding:16px;text-align:center}
-.stat b{display:block;font-size:30px;font-family:ui-monospace,Menlo,monospace;color:var(--gold)}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px}
+.stat{background:linear-gradient(135deg,#1a1418,#120d10);border:1px solid #d8c39a47;border-radius:12px;padding:16px 8px;text-align:center}
+.stat b{display:block;font-size:26px;font-family:ui-monospace,Menlo,monospace;color:var(--gold)}
+.res-ok{color:#8be89f;font-weight:700}
+.res-fail{color:#ff8ba0;font-weight:700}
 .stat span{font-size:11px;color:#f5efe69e;letter-spacing:2px}
 .btns{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
 h2{font-size:14px;letter-spacing:2px;color:#f5efe69e;margin:18px 0 10px}
@@ -49,15 +51,16 @@ h2{font-size:14px;letter-spacing:2px;color:#f5efe69e;margin:18px 0 10px}
 
   <div id="main" hidden>
     <div class="stats">
-      <div class="stat"><b id="st-n">–</b><span>上榜人数</span></div>
-      <div class="stat"><b id="st-top">–</b><span>最高分</span></div>
+      <div class="stat"><b id="st-n">–</b><span>总对局</span></div>
+      <div class="stat"><b id="st-ok">–</b><span>刹停成功</span></div>
+      <div class="stat"><b id="st-fail">–</b><span>失败</span></div>
     </div>
     <div class="btns">
       <button class="ghost" id="refresh">🔄 刷新</button>
-      <button class="danger" id="reset">🗑 一键清零</button>
+      <button class="danger" id="reset">🗑 清空全部记录</button>
       <button class="ghost" id="gofb">💬 查看反馈</button>
     </div>
-    <h2>🏆 排行榜（按得分排序）</h2>
+    <h2>🎮 游戏记录（最新在前，最多显示 200 条）</h2>
     <div id="runs"></div>
   </div>
 
@@ -78,20 +81,26 @@ async function call(path, method){
 }
 async function load(){
   msg('');
-  var j = await call('/api/admin/tp0k/board');
+  var j = await call('/api/admin/tp0k/records');
   if(!j.ok) throw new Error(j.error||'加载失败');
-  var board = j.board||[];
-  document.getElementById('st-n').textContent = board.length;
-  document.getElementById('st-top').textContent = board.length?board[0].s:'–';
+  var recs = j.records||[];
+  document.getElementById('st-n').textContent = j.count!=null?j.count:recs.length;
+  document.getElementById('st-ok').textContent = j.okCount!=null?j.okCount:'–';
+  document.getElementById('st-fail').textContent = j.failCount!=null?j.failCount:'–';
   var h='';
-  board.forEach(function(x,i){
-    h+='<div class="run"><span class="t">'+fmtT(x.ts)+'</span> <span class="ip">'+esc(x.ip||'--')+'</span><br>🚗 '+esc(x.n||'无名车手')
-      +' · 🏁刹车速度 <span class="v">'+Number(x.v0).toFixed(1)+' km/h</span>'
-      +' · ⏱刹车时间 <span class="v">'+Number(x.t).toFixed(3)+'s</span>'
-      +' · <span class="score">'+x.s+' 分</span>'
-      +' <button class="delbtn" data-d="'+esc(x.d||'')+'">删</button></div>';
+  recs.forEach(function(x){
+    var res = x.ok
+      ? '<span class="res-ok">✅ 刹停成功</span> · <span class="score">'+x.s+' 分</span>'
+      : '<span class="res-fail">❌ '+esc(x.why||'失败')+'</span>';
+    h+='<div class="run"><span class="t">'+fmtT(x.ts)+'</span> <span class="ip">'+esc(x.ip||'--')+'</span>'
+      +' <button class="delbtn" data-k="'+esc(x.key||'')+'">删</button><br>🚗 '+esc(x.n||'无名车手')
+      +' · '+res
+      +'<br>🏁刹车速度 <span class="v">'+Number(x.v0).toFixed(1)+' km/h</span>'
+      +' · ⏱用时 <span class="v">'+Number(x.t).toFixed(3)+'s</span>'
+      +' · 📏距离 <span class="v">'+Number(x.dist).toFixed(1)+' m</span>'
+      +' · 💪最大踏板力 <span class="v">'+Math.round(Number(x.f))+' N</span></div>';
   });
-  document.getElementById('runs').innerHTML=h||'<div class="empty">暂无上榜记录</div>';
+  document.getElementById('runs').innerHTML=h||'<div class="empty">暂无游戏记录</div>';
 }
 async function login(){
   K=document.getElementById('key').value.trim();
@@ -111,11 +120,11 @@ document.getElementById('key').addEventListener('keydown',function(e){if(e.key==
 document.getElementById('runs').onclick=async function(e){
   var b=e.target.closest?e.target.closest('.delbtn'):null;
   if(!b)return;
-  var d=b.getAttribute('data-d');
-  if(!d||!confirm('删除该设备的排行榜记录？'))return;
+  var k=b.getAttribute('data-k');
+  if(!k||!confirm('删除这条游戏记录？'))return;
   b.disabled=true;
   try{
-    var r=await fetch(API+'/api/admin/tp0k/delete-entry?key='+encodeURIComponent(K),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({device:d})});
+    var r=await fetch(API+'/api/admin/tp0k/delete-record?key='+encodeURIComponent(K),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k})});
     var j=await r.json();
     if(j.ok)await load();else alert(j.error||'删除失败');
   }catch(err){alert('删除失败');}
@@ -123,13 +132,13 @@ document.getElementById('runs').onclick=async function(e){
 };
 document.getElementById('refresh').onclick=function(){load().catch(function(e){alert(e.message==='auth'?'密码已失效，请刷新页面重登':'加载失败');});};
 document.getElementById('reset').onclick=async function(){
-  if(!confirm('确定要一键清零吗？\n排行榜将全部清空，不可恢复！'))return;
+  if(!confirm('确定要清空吗？\n全部游戏记录将删除，不可恢复！'))return;
   if(!confirm('再次确认：真的全部清空？'))return;
   this.disabled=true;
   try{
-    var j=await call('/api/admin/tp0k/reset','POST');
-    if(j.ok){alert('已清零');await load();}
-    else alert(j.error||'清零失败');
+    var j=await call('/api/admin/tp0k/clear-records','POST');
+    if(j.ok){alert('已清空');await load();}
+    else alert(j.error||'清空失败');
   }catch(e){alert('操作失败');}
   this.disabled=false;
 };

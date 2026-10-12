@@ -44,6 +44,8 @@ input,textarea{-webkit-user-select:text;user-select:text}
 .menu-nickname input:focus{border-color:#d8c39a}
 .menu-nickname input::placeholder{color:#f5efe69e}
 .menu-nickname .btn{flex-shrink:0;padding:10px 18px}
+/* ---------- 排行榜已下线，改为每局自动记录到后台 ---------- */
+#boardBtn,#resultBoardBtn,#submitForm,#submitMsg,#board{display:none!important}
 /* ---------- 窄屏 HUD 紧凑化 ---------- */
 @media (max-width:560px){
   .hud-top{left:calc(8px + env(safe-area-inset-left));right:calc(8px + env(safe-area-inset-right));gap:8px}
@@ -123,7 +125,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
         <button id="announceBtn" class="btn">📢 公告</button>
       </div>
       <div class="menu-nickname">
-        <input id="menuNickname" maxlength="12" placeholder="🏁 输入车手名称，成功自动上榜" autocomplete="off">
+        <input id="menuNickname" maxlength="12" placeholder="🏁 输入车手名称，每局自动记录" autocomplete="off">
         <button id="menuNicknameOk" class="btn">确定</button>
       </div>
       <button id="muteBtn" class="mute">音效：开</button>
@@ -192,7 +194,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
       </div>
     </div>
     <script>
-    // 排行榜接口转发：游戏内用相对路径 /api/*，转到 DeepSeek worker；提交时注入 deviceId
+    // 接口转发兜底：游戏本体若请求相对路径 /api/*，转到 DeepSeek worker（排行榜 UI 已隐藏，接口仅防本体报错）
     (function(){
       var API_BASE = 'https://deepseekchatkele.pages.dev';
       function getDeviceId(){
@@ -221,7 +223,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
         return _fetch.call(this, url, opts);
       };
     })();
-    // 主界面车手名称：同步到 localStorage 和结果页，成功时自动提交上榜
+    // 主界面车手名称：同步到 localStorage 和结果页
     (function(){
       var KEY = 'brake-game:nickname'; // 与游戏共用同一个 key
       var menuInput = document.getElementById('menuNickname');
@@ -275,23 +277,63 @@ input,textarea{-webkit-user-select:text;user-select:text}
           });
         });
       }
-      var autoDone = false;
-      new MutationObserver(function(){
-        if(resultPanel.classList.contains('hidden')){ autoDone = false; return; }
-        if(autoDone) return;
+    })();
+    // 游戏记录：每局结束（刹停成功 / 踏板断裂 / 撞上路障）自动上报到后台
+    (function(){
+      var API = 'https://deepseekchatkele.pages.dev/api/game-record';
+      var panel = document.getElementById('result');
+      if(!panel) return;
+      function deviceId(){
+        try{
+          var id = localStorage.getItem('tp0k_device_id');
+          if(!id){ id = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2,10); localStorage.setItem('tp0k_device_id', id); }
+          return id;
+        }catch(e){ return 'anon'; }
+      }
+      function num(id){
+        var el = document.getElementById(id);
+        if(!el) return 0;
+        var m = el.textContent.match(/([\d.]+)/);
+        return m ? parseFloat(m[1]) : 0;
+      }
+      var sent = false, tries = 0;
+      function report(){
+        if(sent || panel.classList.contains('hidden')) return;
         var title = document.getElementById('resultTitle');
-        if(!title || title.textContent !== '刹停成功') return;
-        var name = menuInput.value.trim();
-        if(!name) return;
-        autoDone = true;
-        resultInput.value = name;
-        setTimeout(function(){
-          try{
-            if(typeof submitForm.requestSubmit === 'function') submitForm.requestSubmit();
-            else document.getElementById('submitBtn').click();
-          }catch(e){}
-        }, 400);
-      }).observe(resultPanel, { attributes: true, attributeFilter: ['class'] });
+        if(!title) return;
+        var t = title.textContent;
+        var ok = (t === '刹停成功');
+        if(!ok && t !== '刹车踏板断裂' && t !== '撞上路障'){
+          if(tries++ < 6) setTimeout(report, 500);
+          return;
+        }
+        sent = true;
+        var name = '';
+        try{ name = (localStorage.getItem('brake-game:nickname') || '').trim(); }catch(e){}
+        if(!name){
+          var mi = document.getElementById('menuNickname');
+          if(mi) name = mi.value.trim();
+        }
+        var body = {
+          nickname: name,
+          device: deviceId(),
+          result: ok ? 'success' : 'fail',
+          reason: ok ? '' : t,
+          v0: num('statV0'),
+          stopTime: num('statTime'),
+          dist: num('statDist'),
+          force: num('statForce'),
+          score: num('statScore')
+        };
+        try{
+          fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: true }).catch(function(){});
+        }catch(e){}
+      }
+      new MutationObserver(function(){
+        if(panel.classList.contains('hidden')){ sent = false; return; }
+        tries = 0;
+        setTimeout(report, 800);
+      }).observe(panel, { attributes: true, attributeFilter: ['class'] });
     })();
     // 返回主菜单按钮
     (function(){
