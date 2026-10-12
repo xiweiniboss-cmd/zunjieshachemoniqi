@@ -62,6 +62,11 @@ h2{font-size:14px;letter-spacing:2px;color:#f5efe69e;margin:18px 0 10px}
     </div>
     <h2>🎮 游戏记录（最新在前，最多显示 200 条）</h2>
     <div id="runs"></div>
+    <h2>🏆 排行榜（按得分排序）</h2>
+    <div class="btns">
+      <button class="danger" id="resetBoard">🗑 清空排行榜</button>
+    </div>
+    <div id="boardList"></div>
   </div>
 
   <p class="back"><a href="../">← 返回游戏</a></p>
@@ -101,6 +106,21 @@ async function load(){
       +' · 💪最大踏板力 <span class="v">'+Math.round(Number(x.f))+' N</span></div>';
   });
   document.getElementById('runs').innerHTML=h||'<div class="empty">暂无游戏记录</div>';
+  try{ await loadBoard(); }catch(e){}
+}
+async function loadBoard(){
+  var j = await call('/api/admin/tp0k/board');
+  if(!j.ok) return;
+  var board = j.board||[];
+  var h='';
+  board.forEach(function(x,i){
+    h+='<div class="run">#'+(i+1)+' · <span class="t">'+fmtT(x.ts)+'</span> <span class="ip">'+esc(x.ip||'--')+'</span>'
+      +' <button class="delbtn" data-d="'+esc(x.d||'')+'">删</button><br>🚗 '+esc(x.n||'无名车手')
+      +' · 🏁刹车速度 <span class="v">'+Number(x.v0).toFixed(1)+' km/h</span>'
+      +' · ⏱刹车时间 <span class="v">'+Number(x.t).toFixed(3)+'s</span>'
+      +' · <span class="score">'+x.s+' 分</span></div>';
+  });
+  document.getElementById('boardList').innerHTML=h||'<div class="empty">暂无上榜记录</div>';
 }
 async function login(){
   K=document.getElementById('key').value.trim();
@@ -129,6 +149,30 @@ document.getElementById('runs').onclick=async function(e){
     if(j.ok)await load();else alert(j.error||'删除失败');
   }catch(err){alert('删除失败');}
   b.disabled=false;
+};
+document.getElementById('boardList').onclick=async function(e){
+  var b=e.target.closest?e.target.closest('.delbtn'):null;
+  if(!b)return;
+  var d=b.getAttribute('data-d');
+  if(!d||!confirm('删除该设备的排行榜记录？'))return;
+  b.disabled=true;
+  try{
+    var r=await fetch(API+'/api/admin/tp0k/delete-entry?key='+encodeURIComponent(K),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({device:d})});
+    var j=await r.json();
+    if(j.ok)await loadBoard();else alert(j.error||'删除失败');
+  }catch(err){alert('删除失败');}
+  b.disabled=false;
+};
+document.getElementById('resetBoard').onclick=async function(){
+  if(!confirm('确定要清空排行榜吗？\n全部上榜成绩将删除，不可恢复！'))return;
+  if(!confirm('再次确认：真的全部清空？'))return;
+  this.disabled=true;
+  try{
+    var j=await call('/api/admin/tp0k/reset','POST');
+    if(j.ok){alert('排行榜已清空');await loadBoard();}
+    else alert(j.error||'清空失败');
+  }catch(e){alert('操作失败');}
+  this.disabled=false;
 };
 document.getElementById('refresh').onclick=function(){load().catch(function(e){alert(e.message==='auth'?'密码已失效，请刷新页面重登':'加载失败');});};
 document.getElementById('reset').onclick=async function(){
